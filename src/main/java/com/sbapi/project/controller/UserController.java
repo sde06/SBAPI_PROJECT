@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.sbapi.project.dto.CommResDTO;
 import com.sbapi.project.dto.UserGetInfoDTO;
 import com.sbapi.project.dto.UserGetInfoResDTO;
+import com.sbapi.project.dto.UserloginDTO;
+import com.sbapi.project.dto.UserloginResDTO;
 import com.sbapi.project.response.ApiException;
 import com.sbapi.project.service.UserService;
 import com.sbapi.project.util.ExceptionEnum;
@@ -86,6 +88,60 @@ public class UserController {
 			result.setUserNm(resultInfo.get("userNm").toString());
 			result.setPhoneNum(resultInfo.get("phoneNum").toString());
 			result.setEmailId(resultInfo.get("emailId").toString());
+		}
+		
+		/*** [결과응답 셋팅] ***/
+		result.setResultCode("0000");
+		result.setResultMessage("정상 처리");
+		result.setUserExistYn(userRegYn);
+		
+		return result;
+	}
+	
+	
+	/**
+	 * login API (테이블 연동 X) - /user/getInfo
+	 * @Desc - 회원 정보를 조회합니다.
+	 * @param header, param
+	 * @return
+	 * @throws ApiException
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/login", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE)
+	@Transactional
+	public UserloginResDTO login(@RequestHeader Map<String, Object> header, @RequestBody UserloginDTO param) throws ApiException {
+		log.debug("■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ UserController getInfo header : " + header.toString());
+		log.debug("■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ UserController getInfo param : " + param.toString());
+		
+		/*** [Default 변수 선언] ***/
+		UserloginResDTO result = new UserloginResDTO();
+		Map<String, Object> reqParam = new HashMap<String, Object>();
+		
+		/*** [파라미터 유효성 체크] ***/
+		//0. 필수 파라미터 체크
+		if(!header.containsKey("apikey") || StrUtil.nvl(header.get("apikey").toString()).isEmpty() || !_API_KEY_.equals(StrUtil.nvl(header.get("apikey")))) {
+			throw new ApiException(ExceptionEnum.API_KEY_EXCEPTION);
+		}
+		if(StrUtil.nvl(param.getEmailId()).isEmpty()) {
+			throw new ApiException(ExceptionEnum.REQUIRE_PARAM_EXCEPTION);
+		}
+		
+		/*** [비즈니스 로직 처리] ***/
+		//0. 비즈니스 변수 선언
+		
+		//1. 회원정보조회
+		reqParam.clear();
+		reqParam.put("userId", param.getEmailId());
+		String userRegYn = service.selectUserRegYn(reqParam);	//--회원등록여부조회
+		
+		if("Y".equals(userRegYn)) {
+			//1.1. 등록된 회원인 경우
+			reqParam.clear();
+			reqParam.put("EmailId", param.getEmailId());
+			reqParam.put("UserPassword", param.getUserPassword());
+			
+			Map<String, Object> resultInfo = service.selectUserInfo(reqParam);	//--회원정보조회
+			result.setUserId(resultInfo.get("userId").toString());
 		}
 		
 		/*** [결과응답 셋팅] ***/
