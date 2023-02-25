@@ -11,5 +11,7 @@ public interface UserService {
 	
 	/* 회원정보조회 */
 	public Map<String, Object> selectUserInfo(Map<String, Object> params) throws ApiException;
+
+	public int insertuserInfo(Map<String, Object> params) throws ApiException;
 	
 }

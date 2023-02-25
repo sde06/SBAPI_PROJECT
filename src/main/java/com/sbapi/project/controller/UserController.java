@@ -14,11 +14,12 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.sbapi.project.dto.CommResDTO;
 import com.sbapi.project.dto.UserGetInfoDTO;
 import com.sbapi.project.dto.UserGetInfoResDTO;
 import com.sbapi.project.dto.UserloginDTO;
 import com.sbapi.project.dto.UserloginResDTO;
+import com.sbapi.project.dto.reguserDTO;
+import com.sbapi.project.dto.reguserResDTO;
 import com.sbapi.project.response.ApiException;
 import com.sbapi.project.service.UserService;
 import com.sbapi.project.util.ExceptionEnum;
@@ -84,10 +85,10 @@ public class UserController {
 			reqParam.put("userId", param.getUserId());
 			
 			Map<String, Object> resultInfo = service.selectUserInfo(reqParam);	//--회원정보조회
-			result.setUserId(resultInfo.get("userId").toString());
-			result.setUserNm(resultInfo.get("userNm").toString());
-			result.setPhoneNum(resultInfo.get("phoneNum").toString());
-			result.setEmailId(resultInfo.get("emailId").toString());
+			result.setUserId(resultInfo.get("user_id") != null ? resultInfo.get("user_id").toString() : "");
+			result.setUserNm(resultInfo.get("user_nm") != null ? resultInfo.get("user_nm").toString() : "");
+			result.setPhoneNum(resultInfo.get("user_phone_no") != null ? resultInfo.get("user_phone_no").toString() : "");
+			result.setEmailId(resultInfo.get("user_email") != null ? resultInfo.get("user_email").toString() : "");
 		}
 		
 		/*** [결과응답 셋팅] ***/
@@ -151,5 +152,70 @@ public class UserController {
 		
 		return result;
 	}
+	
+	
+	/**
+	 * 회원정보조회 API (테이블 연동 X) - /user/getInfo
+	 * @Desc - 회원 정보를 조회합니다.
+	 * @param header, param
+	 * @return
+	 * @throws ApiException
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/reguser", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE)
+	@Transactional
+	public reguserResDTO reguser(@RequestHeader Map<String, Object> header, @RequestBody reguserDTO param) throws ApiException {
+		log.debug("■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ UserController getInfo header : " + header.toString());
+		log.debug("■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■ UserController getInfo param : " + param.toString());
+		
+		/*** [Default 변수 선언] ***/
+		reguserResDTO result = new reguserResDTO();
+		Map<String, Object> reqParam = new HashMap<String, Object>();
+		
+		/*** [파라미터 유효성 체크] ***/
+		//0. 필수 파라미터 체크
+		if(!header.containsKey("apikey") || StrUtil.nvl(header.get("apikey").toString()).isEmpty() || !_API_KEY_.equals(StrUtil.nvl(header.get("apikey")))) {
+			throw new ApiException(ExceptionEnum.API_KEY_EXCEPTION);
+		}
+		if(StrUtil.nvl(param.getReguserID()).isEmpty() || StrUtil.nvl(param.getRegUserPassword()).isEmpty()) {
+			throw new ApiException(ExceptionEnum.REQUIRE_PARAM_EXCEPTION);
+		}
+		
+		/*** [비즈니스 로직 처리] ***/
+		//0. 비즈니스 변수 선언
+		
+		//1. 회원정보조회
+		reqParam.clear();
+		reqParam.put("userId", param.getReguserID());
+		String userRegYn = service.selectUserRegYn(reqParam);	//--회원등록여부조회
+		
+		if("Y".equals(userRegYn)) {
+			result.setResultCode("9999");
+			result.setResultMessage("이미 유저잇음");
+			
+		}else {
+			//1.1. 등록된 회원인 경우
+			reqParam.clear();
+			reqParam.put("userId", param.getReguserID());
+			
+			int cnt = service.insertuserInfo(reqParam);	//--회원정보조회
+			if(cnt > 0) {
+				result.setResultCode("0000");
+				result.setResultMessage("정상 처리");
+				result.setUserId(param.getReguserID());
+			}else {
+				result.setResultCode("9999");
+				result.setResultMessage("저장실패");
+			}
+			
+		}
+		
+		/*** [결과응답 셋팅] ***/
+		
+		result.setUserExistYn(userRegYn);
+		
+		return result;
+	}
+	
 	
 }
